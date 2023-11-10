@@ -1,0 +1,30 @@
+# Ignore every file
+*
+
+# Except for directories
+!*/
+
+# Ignore every file format
+*.*
+
+# Except for these file formats
+
+!.gitignore
+!.md
+!*.c
+!*.h
+!*.sh
+!*.py
+!*.html
+!*.conf
+!*.y*ml
+!*.txt
+!*.env
+!*Dockerfile
+!*Jenkinsfile
+!*.java
+!*.xml
+!*.css
+!*.json
+!*.circleci
+
