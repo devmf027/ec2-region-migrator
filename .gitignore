@@ -10,7 +10,7 @@
 # Except for these file formats
 
 !.gitignore
-!.md
+!*.md
 !*.c
 !*.h
 !*.sh
