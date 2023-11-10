@@ -1,0 +1,1 @@
+boto3==1.17.125    # The AWS SDK for Python, used to interact with AWS services
