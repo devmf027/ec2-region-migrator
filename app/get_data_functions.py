@@ -52,3 +52,35 @@ def get_subnet_data(subnet_id):
     response = ec2.describe_subnets(SubnetIds=[subnet_id])
     return response
 
+
+def extract_ec2_info(ec2_data):
+    """
+    Extract and structure EC2 information from the AWS API response.
+
+    This function takes the output of the `get_ec2_instance_data` function and extracts specific information
+    to create a dictionary with the EC2 instance ID as the key and relevant data as values.
+
+    :param ec2_data: The AWS API response for an EC2 instance.
+    :returns: A dictionary with EC2 instance ID as the key and relevant data as values.
+    """
+    ec2_info = {}
+
+    if 'Reservations' in ec2_data:
+        for reservation in ec2_data['Reservations']:
+            for instance in reservation['Instances']:
+                instance_id = instance['InstanceId']
+
+                # Extract the security group IDs from the SecurityGroups list
+                security_group_ids = [sg['GroupId']
+                                      for sg in instance.get('SecurityGroups', [])]
+
+                ec2_info[instance_id] = {
+                    'ec2_name': instance.get('KeyName', ''),
+                    'ec2_type': instance['InstanceType'],
+                    'vpc_id': instance['VpcId'],
+                    'subnet_cidr': instance.get('SubnetId', ''),
+                    'security_group_id': security_group_ids,
+                    'tags_of_ec2': instance.get('Tags', [])
+                }
+
+    return ec2_info
