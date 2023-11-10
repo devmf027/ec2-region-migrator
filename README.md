@@ -41,7 +41,4 @@ Please make sure to update or add tests as necessary and ensure your code is wel
 
 ## Credits
 
-- [Your Name](https://github.com/your-github-username) - Project Lead and Developer
-- [Contributor's Name](https://github.com/contributor-github-username) - Contributor
-
-[Include credits for any external resources, tutorials, or libraries you've used in your project.]
+- [Dariel Mizrachi](https://github.com/devmf027) - Project Lead and Developer
