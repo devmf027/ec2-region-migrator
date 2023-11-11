@@ -105,3 +105,25 @@ def extract_vpc_info(vpc_data):
             }
 
     return vpc_info
+
+
+def extract_subnet_info(subnet_data):
+    """
+    Extract and structure subnet information from the AWS API response.
+
+    :param subnet_data: The AWS API response for subnet information.
+    :returns: A dictionary with Subnet ID as the key and relevant data as values.
+    """
+    subnet_info = {}
+
+    if "Subnets" in subnet_data:
+        for subnet in subnet_data["Subnets"]:
+            subnet_id = subnet["SubnetId"]
+            subnet_info[subnet_id] = {
+                "AvailabilityZone": subnet.get("AvailabilityZone", ""),
+                "CidrBlock": subnet.get("CidrBlock", ""),
+                "VpcId": subnet.get("VpcId", ""),
+                "Tags": subnet.get("Tags", [])
+            }
+
+    return subnet_info
