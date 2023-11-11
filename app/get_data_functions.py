@@ -174,3 +174,60 @@ def extract_security_group_info(security_group_data):
                     egress_info)
 
     return security_group_info
+
+
+def get_ec2_resource_info(ec2_instance_ids):
+    """
+    Get information about EC2 instances, VPCs, subnets, and security groups for a list of EC2 instance IDs.
+
+    :param ec2_instance_ids: A list of EC2 instance IDs.
+    :returns: A dictionary containing information about EC2 instances, VPCs, subnets, and security groups.
+    """
+    ec2_info = {}
+    vpc_info = {}
+    subnet_info = {}
+    security_group_info = {}
+
+    # Single set to store already queried resource IDs
+    queried_resources = set()
+
+    for instance_id in ec2_instance_ids:
+        # Check if the EC2 instance has already been queried
+        if ("ec2", instance_id) not in queried_resources:
+            ec2_data = get_ec2_instance_data(instance_id)
+            instance_info = extract_instance_info(ec2_data)
+            ec2_info.update(instance_info)
+            queried_resources.add(("ec2", instance_id))
+
+            # Process related resources
+            vpc_id = instance_info[instance_id]['vpc_id']
+            subnet_id = instance_info[instance_id]['subnet_cidr']
+            sg_ids = instance_info[instance_id]['security_group_id']
+
+            if ("vpc", vpc_id) not in queried_resources:
+                vpc_data = get_vpc_data(vpc_id)
+                vpc_extracted_info = extract_vpc_info(vpc_data)
+                vpc_info.update(vpc_extracted_info)
+                queried_resources.add(("vpc", vpc_id))
+
+            if ("subnet", subnet_id) not in queried_resources:
+                subnet_data = get_subnet_data(subnet_id)
+                subnet_extracted_info = extract_subnet_info(subnet_data)
+                subnet_info.update(subnet_extracted_info)
+                queried_resources.add(("subnet", subnet_id))
+
+            for sg_id in sg_ids:
+                if ("sg", sg_id) not in queried_resources:
+                    sg_data = get_security_group_data(sg_id)
+                    sg_extracted_info = extract_security_group_info(sg_data)
+                    security_group_info.update(sg_extracted_info)
+                    queried_resources.add(("sg", sg_id))
+
+    resource_info = {
+        "ec2_instances": ec2_info,
+        "vpcs": vpc_info,
+        "subnets": subnet_info,
+        "security_groups": security_group_info
+    }
+
+    return resource_info
