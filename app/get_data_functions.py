@@ -258,3 +258,17 @@ def save_to_audit_file(resource_id, resource_type, data):
     # Save the data to the JSON file
     with open(file_path, "w") as file:
         json.dump(data, file, indent=4, default=str)
+
+
+def create_instance_image(instance_id, image_name):
+    """
+    Create an AMI from an existing EC2 instance.
+
+    :param instance_id: The ID of the EC2 instance.
+    :param image_name: The name for the new AMI.
+    :return: The ID of the created AMI if successful, None otherwise.
+    """
+    ec2_client = boto3.client('ec2')
+    response = ec2_client.create_image(InstanceId=instance_id, Name=image_name)
+    response["InstanceId"] = instance_id
+    return response
