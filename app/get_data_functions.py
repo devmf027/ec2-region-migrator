@@ -127,3 +127,50 @@ def extract_subnet_info(subnet_data):
             }
 
     return subnet_info
+
+
+def extract_security_group_info(security_group_data):
+    """
+    Extract and structure security group information from the AWS API response.
+
+    :param security_group_data: The AWS API response for security group information.
+    :returns: A dictionary with Security Group ID as the key and relevant data as values.
+    """
+    security_group_info = {}
+
+    if "SecurityGroups" in security_group_data:
+        for sg in security_group_data["SecurityGroups"]:
+            sg_id = sg["GroupId"]
+            security_group_info[sg_id] = {
+                "IpPermissions": [],
+                "IpPermissionsEgress": [],
+                "Tags": sg.get("Tags", [])
+            }
+
+            # Extract ingress rules
+            for ingress_rule in sg.get("IpPermissions", []):
+                ingress_info = {
+                    "FromPort": ingress_rule.get("FromPort", ""),
+                    "IpProtocol": ingress_rule.get("IpProtocol", ""),
+                    "IpRanges": [{"CidrIp": ip_range.get("CidrIp", ""),
+                                  "Description": ip_range.get("Description", "")}
+                                 for ip_range in ingress_rule.get("IpRanges", [])],
+                    "ToPort": ingress_rule.get("ToPort", "")
+                }
+                security_group_info[sg_id]["IpPermissions"].append(
+                    ingress_info)
+
+            # Extract egress rules
+            for egress_rule in sg.get("IpPermissionsEgress", []):
+                egress_info = {
+                    "FromPort": egress_rule.get("FromPort", ""),
+                    "IpProtocol": egress_rule.get("IpProtocol", ""),
+                    "IpRanges": [{"CidrIp": ip_range.get("CidrIp", ""),
+                                  "Description": ip_range.get("Description", "")}
+                                 for ip_range in egress_rule.get("IpRanges", [])],
+                    "ToPort": egress_rule.get("ToPort", "")
+                }
+                security_group_info[sg_id]["IpPermissionsEgress"].append(
+                    egress_info)
+
+    return security_group_info
