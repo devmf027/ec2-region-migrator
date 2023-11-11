@@ -27,4 +27,4 @@
 !*.css
 # !*.json
 !*.circleci
-
+!*.tf
