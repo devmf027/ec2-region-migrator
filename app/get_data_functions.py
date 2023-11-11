@@ -231,3 +231,30 @@ def get_ec2_resource_info(ec2_instance_ids):
     }
 
     return resource_info
+
+
+def save_to_audit_file(resource_id, resource_type, data):
+    """
+    Save data to a JSON file in the audit directory with a timestamp.
+
+    This function takes resource ID, resource type, and data as input and saves the data to a JSON file in the audit directory.
+    The file name is constructed using the resource ID, type, and a timestamp.
+
+    :param resource_id: The ID of the AWS resource.
+    :param resource_type: The type of the AWS resource (e.g., "ec2", "vpc", "security_group").
+    :param data: The data to be saved to the JSON file.
+    :returns: None
+    """
+    # Get the current timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
+    # Construct the file path with resource ID, type, and timestamp
+    file_path = os.path.join(os.path.dirname(
+        __file__), "..", "audit", f"{resource_type}_{resource_id}_{timestamp}.json")
+
+    # Create the directory if it doesn"t exist
+    os.makedirs(os.path.dirname(file_path), exist_ok=True)
+
+    # Save the data to the JSON file
+    with open(file_path, "w") as file:
+        json.dump(data, file, indent=4, default=str)
