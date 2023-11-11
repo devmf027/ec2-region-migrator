@@ -87,4 +87,21 @@ def extract_instance_info(ec2_data):
     return ec2_info
 
 
+def extract_vpc_info(vpc_data):
+    """
+    Extract and structure VPC information from the AWS API response.
 
+    :param vpc_data: The AWS API response for describe VPC information.
+    :returns: A dictionary with VPC ID as the key and relevant data as values.
+    """
+    vpc_info = {}
+
+    if "Vpcs" in vpc_data:
+        for vpc in vpc_data["Vpcs"]:
+            vpc_id = vpc["VpcId"]
+            vpc_info[vpc_id] = {
+                "CidrBlock": vpc.get("CidrBlock", ""),
+                "Tags": vpc.get("Tags", [])
+            }
+
+    return vpc_info
