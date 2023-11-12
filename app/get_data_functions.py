@@ -63,7 +63,7 @@ def extract_instance_info(ec2_data):
     :param ec2_data: The AWS API response from describe EC2 instance.
     :returns: A dictionary with EC2 instance ID as the key and relevant data as values.
     """
-    ec2_info = {}
+    ec2_instance_info = {}
 
     if "Reservations" in ec2_data:
         for reservation in ec2_data["Reservations"]:
@@ -74,17 +74,17 @@ def extract_instance_info(ec2_data):
                 security_group_ids = [sg["GroupId"]
                                       for sg in instance.get("SecurityGroups", [])]
 
-                ec2_info[instance_id] = {
+                ec2_instance_info[instance_id] = {
                     "InstanceType": instance["InstanceType"],
                     "VpcId": instance["VpcId"],
                     "SubnetId": instance.get("SubnetId", ""),
                     "PrivateIpAddress": instance.get("PrivateIpAddress", ""),
                     "SecurityGroups": security_group_ids,
                     "Tags": instance.get("Tags", []),
-                    
+
                 }
 
-    return ec2_info
+    return ec2_instance_info
 
 
 def extract_vpc_info(vpc_data):
@@ -141,7 +141,9 @@ def extract_security_group_info(security_group_data):
     if "SecurityGroups" in security_group_data:
         for sg in security_group_data["SecurityGroups"]:
             sg_id = sg["GroupId"]
+            vpc_id = sg.get("VpcId")
             security_group_info[sg_id] = {
+                "VpcId": vpc_id,
                 "IpPermissions": [],
                 "IpPermissionsEgress": [],
                 "Tags": sg.get("Tags", [])
@@ -183,7 +185,7 @@ def get_ec2_resource_info(ec2_instance_ids):
     :param ec2_instance_ids: A list of EC2 instance IDs.
     :returns: A dictionary containing information about EC2 instances, VPCs, subnets, and security groups.
     """
-    ec2_info = {}
+    ec2_instance_info = {}
     vpc_info = {}
     subnet_info = {}
     security_group_info = {}
@@ -195,7 +197,8 @@ def get_ec2_resource_info(ec2_instance_ids):
         # Get data for each EC2 instance
         ec2_data = get_ec2_instance_data(instance_id)
         instance_info = extract_instance_info(ec2_data)
-        ec2_info.update(instance_info)
+        ec2_instance_info.update(instance_info)
+        save_to_audit_file(instance_id, "ec2-instance", ec2_data)
 
         # Get and process VPC ID
         vpc_id = instance_info[instance_id]["VpcId"]
@@ -204,6 +207,7 @@ def get_ec2_resource_info(ec2_instance_ids):
             vpc_extracted_info = extract_vpc_info(vpc_data)
             vpc_info.update(vpc_extracted_info)
             queried_ids.add(vpc_id)
+            save_to_audit_file(vpc_id, "vpc", vpc_data)
 
         # Get and process Subnet ID
         subnet_id = instance_info[instance_id]["SubnetId"]
@@ -212,6 +216,7 @@ def get_ec2_resource_info(ec2_instance_ids):
             subnet_extracted_info = extract_subnet_info(subnet_data)
             subnet_info.update(subnet_extracted_info)
             queried_ids.add(subnet_id)
+            save_to_audit_file(subnet_id, "subnet", subnet_data)
 
         # Get and process Security Group IDs
         sg_ids = instance_info[instance_id]["SecurityGroups"]
@@ -221,16 +226,16 @@ def get_ec2_resource_info(ec2_instance_ids):
                 sg_extracted_info = extract_security_group_info(sg_data)
                 security_group_info.update(sg_extracted_info)
                 queried_ids.add(sg_id)
+                save_to_audit_file(sg_id, "security-group", sg_data)
 
     resource_info = {
-        "ec2_instances": ec2_info,
+        "ec2_instances": ec2_instance_info,
         "vpcs": vpc_info,
         "subnets": subnet_info,
         "security_groups": security_group_info
     }
 
     return resource_info
-
 
 
 def save_to_audit_file(resource_id, resource_type, data):
@@ -271,4 +276,7 @@ def create_instance_image(instance_id, image_name):
     ec2_client = boto3.client('ec2')
     response = ec2_client.create_image(InstanceId=instance_id, Name=image_name)
     response["InstanceId"] = instance_id
+    save_to_audit_file(response["ImageId"], 'ami', response)
     return response
+
+
