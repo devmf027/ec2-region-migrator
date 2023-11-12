@@ -20,26 +20,26 @@ def main():
     
     vpc_args_list = tf.extract_vpc_info(data_dict)
     
-    # Creat vpc directories and files for each vpc
-    # for vpc_args in vpc_args_list:
-    #     print(vpc_args)
-    #     tf.create_vpc_module(var.vpc_module_template, vpc_args["index"])
-    #     vpc_name = f"vpc-{vpc_args['index']}"
+    # Create vpc directories and files for each vpc
+    for vpc_args in vpc_args_list:
+        print(vpc_args)
+        tf.create_vpc_module(var.vpc_module_template, vpc_args["index"])
+        vpc_name = f"vpc-{vpc_args['index']}"
 
-    #     # Call the function to create the VPC variables file
-    #     tf.create_tf_file(vpc_name, "vpc-variabels.tf", var.vpc_variables_template, vpc_args)
+        # Call the function to create the VPC variables file
+        tf.create_tf_file(vpc_name, "vpc-variabels.tf", var.vpc_variables_template, vpc_args)
 
-    #     # Call the function to create the VPC auto.tfvars file
-    #     tf.create_tf_file(vpc_name, "vpc.auto.tfvars", var.vpc_auto_tfvars_template, vpc_args)
+        # Call the function to create the VPC auto.tfvars file
+        tf.create_tf_file(vpc_name, "vpc.auto.tfvars", var.vpc_auto_tfvars_template, vpc_args)
 
-    #     # Call the function to create generic variables file
-    #     tf.create_tf_file(vpc_name, "generic-variables.tf", var.generic_variables_template, DESTINATION_REGION)
+        # Call the function to create generic variables file
+        tf.create_tf_file(vpc_name, "generic-variables.tf", var.generic_variables_template, DESTINATION_REGION)
 
-    #     # Call the function to create terraform.tfvars file
-    #     tf.create_tf_file(vpc_name, "terraform.tfvars", var.terraform_tfvars_template, DESTINATION_REGION)
+        # Call the function to create terraform.tfvars file
+        tf.create_tf_file(vpc_name, "terraform.tfvars", var.terraform_tfvars_template, DESTINATION_REGION)
 
-    #      # Call the function to create version.tf file
-    #     tf.create_tf_file(vpc_name, "versions.tf", var.versions_template)
+         # Call the function to create version.tf file
+        tf.create_tf_file(vpc_name, "versions.tf", var.versions_template)
 
     print(tf.group_security_groups_by_vpc(data_dict['security_groups']))
 
