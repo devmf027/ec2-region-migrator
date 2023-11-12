@@ -280,3 +280,20 @@ def create_instance_image(instance_id, image_name):
     return response
 
 
+def add_image_id_to_instances(data, image_data_list):
+    """
+    Add ImageId to EC2 instances in the provided data dictionary by InstanceId.
+
+    :param data:
+        The data dictionary containing information about EC2 resources.
+
+    :param image_data_list:
+        A list of dictionaries containing ImageId and InstanceId.
+
+    :return: None
+    """
+    ec2_instances = data.get("ec2_instances", {})
+    for image_info in image_data_list:
+        instance_id = image_info.get("InstanceId")
+        if instance_id in ec2_instances:
+            ec2_instances[instance_id]["ImageId"] = image_info.get("ImageId")
