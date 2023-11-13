@@ -1,4 +1,5 @@
 import os
+import sys
 from datetime import datetime
 import json
 import boto3
@@ -238,6 +239,56 @@ def get_ec2_resource_info(ec2_instance_ids):
     return resource_info
 
 
+def format_ec2_resource_info(resource_info):
+    formatted_info = {}
+    index = 1
+    # Iterate over VPCs
+    for vpc_id, vpc_data in resource_info['vpcs'].items():
+        vpc_info = {
+            "VpcIndex": index,
+            "CidrBlock": vpc_data["CidrBlock"],
+            "Tags": vpc_data.get("Tags", []),
+            "Subnets": {}
+        }
+
+        # Find subnets associated with this VPC
+        for subnet_id, subnet_data in resource_info['subnets'].items():
+            if subnet_data['VpcId'] == vpc_id:
+                subnet_info = {
+                    "AvailabilityZone": subnet_data["AvailabilityZone"],
+                    "CidrBlock": subnet_data["CidrBlock"],
+                    "Tags": subnet_data.get("Tags", []),
+                    "EC2Instances": {}
+                }
+
+                # Find EC2 instances in this subnet
+                for instance_id, instance_data in resource_info['ec2_instances'].items():
+                    if instance_data['SubnetId'] == subnet_id:
+                        # Add the new tag to the instance's tags
+                        instance_tags = instance_data.get("Tags", [])
+                        instance_tags.append({"Key": "Origin", "Value": "Ireland"})
+
+                        instance_info = {
+                            "InstanceType": instance_data["InstanceType"],
+                            "PrivateIpAddress": instance_data["PrivateIpAddress"],
+                            "Tags": instance_tags,
+                            "SecurityGroups": instance_data["SecurityGroups"],
+                            "ImageId": instance_data["ImageId"]
+                        }
+                        subnet_info["EC2Instances"][instance_id] = instance_info
+
+                vpc_info["Subnets"][subnet_id] = subnet_info
+
+        formatted_info[vpc_id] = vpc_info
+        index += 1
+    
+    save_to_audit_file("", "formatted", formatted_info)
+
+    return formatted_info
+
+
+
+
 def save_to_audit_file(resource_id, resource_type, data):
     """
     Save data to a JSON file in the audit directory with a timestamp.
@@ -280,6 +331,32 @@ def create_instance_image(instance_id, image_name):
     return response
 
 
+def copy_instance_image(image_id, image_name, source_region, destination_region):
+    """
+    Copy an AMI to a different region.
+    :param image_id: str
+        The ID of the AMI to copy.
+    :param image_name: str
+        The name for the copied AMI.
+    :param source_region: str
+        The region where the source AMI is located.
+    :param destination_region: str
+        The destination region to copy the AMI to.
+    :return: str
+        The ID of the copied AMI if successful, None otherwise.
+    """
+    ec2_client = boto3.client('ec2', region_name=destination_region)
+    response = ec2_client.copy_image(
+        Description='',
+        Name=image_name,
+        SourceImageId=image_id,
+        SourceRegion=source_region
+    )
+    # Optionally save to audit file or perform other actions
+    save_to_audit_file(response["ImageId"], 'copied_ami', response)
+    return response
+
+
 def add_image_id_to_instances(data, image_data_list):
     """
     Add ImageId to EC2 instances in the provided data dictionary by InstanceId.
@@ -297,3 +374,20 @@ def add_image_id_to_instances(data, image_data_list):
         instance_id = image_info.get("InstanceId")
         if instance_id in ec2_instances:
             ec2_instances[instance_id]["ImageId"] = image_info.get("ImageId")
+
+
+def get_ec2_instance_ids_from_args():
+    """
+    Get EC2 instance IDs from command-line arguments and return them as a list.
+    
+    Returns:
+        list: A list of EC2 instance IDs.
+    """
+    # Check if at least one argument (EC2 instance ID) is provided
+    if len(sys.argv) < 2:
+        print("Usage: python your_script.py <EC2_INSTANCE_ID1> [<EC2_INSTANCE_ID2> ...]")
+        sys.exit(1)
+
+    # Extract EC2 instance IDs from command-line arguments (skip the first argument)
+    ec2_instance_ids = sys.argv[1:]
+    return ec2_instance_ids
