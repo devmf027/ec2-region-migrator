@@ -3,7 +3,6 @@ import json
 from ipaddress import ip_network
 import terraform_templates.resource_templates as var
 
-TERRAFORM_DIR = "terraform"
 
 
 def create_vpc_module(vpc_module_template, index):
@@ -18,7 +17,8 @@ def create_vpc_module(vpc_module_template, index):
 
     :return: None
     """
-    vpc_directory = os.path.join(TERRAFORM_DIR, f"vpc-{index}")
+    output_directory = os.path.join(os.path.dirname(__file__), '..', "terraform")
+    vpc_directory = os.path.join(output_directory, f"vpc-{index}")
     os.makedirs(vpc_directory, exist_ok=True)
     output_file_path = os.path.join(vpc_directory, "vpc-module.tf")
     append_data_to_file(output_file_path, vpc_module_template)
@@ -42,7 +42,8 @@ def create_tf_file(vpc_name, filename, vpc_variables_template, args={}):
 
     :return: None
     """
-    vpc_directory = os.path.join(TERRAFORM_DIR, vpc_name)
+    output_directory = os.path.join(os.path.dirname(__file__), '..', "terraform")
+    vpc_directory = os.path.join(output_directory, vpc_name)
     formatted_template = vpc_variables_template % args
     output_file_path = os.path.join(vpc_directory, filename)
     append_data_to_file(
@@ -112,32 +113,29 @@ def format_tags(tag_list):
     return "{" + ", ".join(formatted_tags) + "}"
 
 
-def find_vpc_subnets(subnets, vpc_cidr):
-    vpc_subnets = []
-    vpc_network = ip_network(vpc_cidr)
-    for subnet_info in subnets.values():
-        subnet_network = ip_network(subnet_info['CidrBlock'])
-        if subnet_network.subnet_of(vpc_network):
-            vpc_subnets.append(subnet_info['CidrBlock'])
-    return vpc_subnets
+def extract_vpc_info(vpc_info):
+    public_cidr_blocks = [subnet_info['CidrBlock'] for subnet_info in vpc_info['Subnets'].values()]
+
+    vpc_var_args = {
+        "index": vpc_info['VpcIndex'],
+        "CidrBlock": vpc_info['CidrBlock'],
+        "PublicCidrBlock": public_cidr_blocks,
+        "Tags": format_tags(vpc_info.get('Tags', []))
+    }
+
+    return vpc_var_args
 
 
-def extract_vpc_info(data):
-    vpc_var_args_list = []
-    index = 1
-
-    for vpc_info in data['vpcs'].values():
-        vpc_var_args = {
-            "index": index,
-            "CidrBlock": vpc_info['CidrBlock'],
-            "PublicCidrBlock": find_vpc_subnets(data['subnets'], vpc_info['CidrBlock']),
-            "Tags": format_tags(vpc_info.get('Tags', []))
-        }
-        vpc_var_args_list.append(vpc_var_args)
-        index += 1
-
-    return vpc_var_args_list
-
+def extract_ec2_instance_info(instance_info, subnet_info, instance_index):
+    ec2_args = {
+        "index": instance_index,
+        "ImageId": instance_info['ImageId'],
+        "InstanceType": instance_info['InstanceType'],
+        "CidrBlock": f'"{subnet_info["CidrBlock"]}"',
+        "SecurityGroupIds": "[]",  # Placeholder for security groups
+        "Tags": format_tags(instance_info.get('Tags', []))
+    }
+    return ec2_args
 
 def group_security_groups_by_vpc(security_groups):
     """Group security groups by VPC ID."""

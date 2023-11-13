@@ -54,7 +54,7 @@ variable "vpc_public_subnets" {
 # VPC Public Tags
 variable "vpc_tags" {
   description = "VPC Tags"
-  type        = list(string)
+  type        = map(string)
   default     = %(Tags)s
 }
 """
@@ -102,7 +102,7 @@ provider "aws" {
 """
 
 security_group_resource_template = """
-resource "aws_security_group" "allow_tls" {
+resource "aws_security_group" "security_group_%(index)d" {
   name        = %(GroupName)s
   description = %(Description)s
   vpc_id      = %(VpcId)s
@@ -135,15 +135,23 @@ module "ec2_instance_%(index)d" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "5.5.0"
 
-  name          = "$instance-%(index)d"
+  name          = "instance-%(index)d"
   ami           = "%(ImageId)s"
   instance_type = "%(InstanceType)s"
 
-  subnet_id              = %(CidrBlock)s
-  vpc_security_group_ids = [module.public_web_server_sg.security_group_id]
+  subnet_id              = module.vpc.public_subnets[0]
+  vpc_security_group_ids = %(SecurityGroupIds)s
 
   tags = %(Tags)s
 }
 """
 
+eip_resource_template = """
+# Create Elastic IP for Instance-%(index)d
+resource "aws_eip" "instance_eip-%(index)d" {
+  instance   = module.ec2_instance_%(index)d.id
+  domain     = "vpc"
+  depends_on = [module.ec2_instance_%(index)d, module.vpc]
+}
+"""
 
