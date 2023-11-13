@@ -17,8 +17,6 @@ The "ec2-region-migrator" is a Python application that facilitates the migration
 
 - [How to Install and Run the Project](#how-to-install-and-run-the-project)
 - [How to Use the Project](#how-to-use-the-project)
-- [Contributing](#contributing)
-- [License](#license)
 
 ## How to Install and Run the Project
 
@@ -80,18 +78,6 @@ This project is designed to automate the migration of AWS EC2 instances from one
 
 - Ensure that the AWS credentials provided have the necessary permissions to perform actions on EC2 instances, VPCs, and other related services.
 - The project is structured to be user-friendly, but a basic understanding of AWS services and Terraform is beneficial for custom configurations and troubleshooting.
-
-## Contributing
-
-We welcome contributions from the community. If you have any ideas, bug fixes, or new features to propose, please follow these steps:
-
-1. Open an issue to discuss your proposed changes.
-2. Fork the repository and create a new branch for your feature or bug fix.
-3. Make your changes, ensuring they adhere to the project's coding standards.
-4. Test your changes thoroughly.
-5. Create a pull request with a clear description of your changes.
-
-Please make sure to update or add tests as necessary and ensure your code is well-documented.
 
 ## Credits
 
