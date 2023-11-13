@@ -33,8 +33,8 @@ The "ec2-region-migrator" is a Python application that facilitates the migration
 1. **Clone the Repository**: Clone this repository to your local machine using Git (or download the ZIP file and extract it).
 
    ```bash
-   git clone [URL_of_Your_Repository]
-   cd [Repository_Name]
+   git clone https://github.com/devmf027/ec2-region-migrator
+   cd ec2-region-migrator
 
 ## How to Use the Project
 
