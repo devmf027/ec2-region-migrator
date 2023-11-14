@@ -45,7 +45,7 @@ This project is designed to automate the migration of AWS EC2 instances from one
    - To run the script, open a terminal in the project directory and execute:
 
      ```bash
-     ./init.sh
+     ./scripts/init.sh
      ```
 
    - This script may ask for your sudo password to install the required packages.
