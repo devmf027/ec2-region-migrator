@@ -1,8 +1,11 @@
 import os
 import sys
+import time
 from datetime import datetime
 import json
 import boto3
+from botocore.exceptions import ClientError
+
 
 
 def get_ec2_instance_data(instance_id):
@@ -179,7 +182,7 @@ def extract_security_group_info(security_group_data):
     return security_group_info
 
 
-def get_ec2_resource_info(ec2_instance_ids):
+def extract_ec2_resource_info(ec2_instance_ids):
     """
     Get information about EC2 instances, VPCs, subnets, and security groups for a list of EC2 instance IDs.
 
@@ -239,54 +242,126 @@ def get_ec2_resource_info(ec2_instance_ids):
     return resource_info
 
 
+def format_vpc_info(vpc_id, vpc_data):
+    """
+    Formats the VPC information.
+
+    Args:
+    vpc_id (str): The ID of the VPC.
+    vpc_data (dict): The VPC data containing CidrBlock and Tags.
+
+    Returns:
+    dict: Formatted VPC information.
+    """
+    return {
+        "VpcIndex": vpc_id,
+        "CidrBlock": vpc_data["CidrBlock"],
+        "Tags": vpc_data.get("Tags", []),
+        "Subnets": {}
+    }
+
+
+def format_subnet_info(subnet_id, subnet_data):
+    """
+    Formats the subnet information.
+
+    Args:
+    subnet_id (str): The ID of the subnet.
+    subnet_data (dict): The subnet data containing AvailabilityZone, CidrBlock, and Tags.
+
+    Returns:
+    dict: Formatted subnet information.
+    """
+    return {
+        "AvailabilityZone": subnet_data["AvailabilityZone"],
+        "CidrBlock": subnet_data["CidrBlock"],
+        "Tags": subnet_data.get("Tags", []),
+        "EC2Instances": {}
+    }
+
+
+def format_security_group_info(sg_id, security_groups):
+    """
+    Formats the security group information.
+
+    Args:
+    sg_id (str): The ID of the security group.
+    security_groups (dict): The security groups data.
+
+    Returns:
+    dict: Formatted security group information, or None if the security group is not found.
+    """
+    sg_data = security_groups.get(sg_id)
+    if sg_data:
+        return {
+            "Id": sg_id,
+            "VpcId": sg_data.get("VpcId", ""),
+            "IpPermissions": sg_data.get("IpPermissions", []),
+            "IpPermissionsEgress": sg_data.get("IpPermissionsEgress", []),
+            "Tags": sg_data.get("Tags", [])
+        }
+    return None
+
+
+def format_ec2_instance_info(instance_id, instance_data, security_groups):
+    """
+    Formats the EC2 instance information.
+
+    Args:
+    instance_id (str): The ID of the EC2 instance.
+    instance_data (dict): The data of the EC2 instance containing InstanceType, PrivateIpAddress, etc.
+    security_groups (dict): The security groups data.
+
+    Returns:
+    dict: Formatted EC2 instance information.
+    """
+    security_groups_details = [format_security_group_info(
+        sg_id, security_groups) for sg_id in instance_data.get("SecurityGroups", []) if sg_id in security_groups]
+    return {
+        "InstanceType": instance_data["InstanceType"],
+        "PrivateIpAddress": instance_data["PrivateIpAddress"],
+        "Tags": instance_data.get("Tags", []),
+        "SecurityGroupsDetails": security_groups_details,
+        "ImageId": instance_data["ImageId"]
+    }
+
+
 def format_ec2_resource_info(resource_info):
+    """
+    Formats the entire EC2 resource information including VPCs, subnets, EC2 instances, and security groups.
+
+    Args:
+    resource_info (dict): The raw resource data containing VPCs, subnets, EC2 instances, and security groups.
+
+    Returns:
+    dict: A dictionary containing formatted information of all resources.
+    """
     formatted_info = {}
-    index = 1
+    vpc_number = 1
     # Iterate over VPCs
     for vpc_id, vpc_data in resource_info['vpcs'].items():
-        vpc_info = {
-            "VpcIndex": index,
-            "CidrBlock": vpc_data["CidrBlock"],
-            "Tags": vpc_data.get("Tags", []),
-            "Subnets": {}
-        }
+        vpc_info = format_vpc_info(vpc_number, vpc_data)
 
         # Find subnets associated with this VPC
         for subnet_id, subnet_data in resource_info['subnets'].items():
             if subnet_data['VpcId'] == vpc_id:
-                subnet_info = {
-                    "AvailabilityZone": subnet_data["AvailabilityZone"],
-                    "CidrBlock": subnet_data["CidrBlock"],
-                    "Tags": subnet_data.get("Tags", []),
-                    "EC2Instances": {}
-                }
+                subnet_info = format_subnet_info(subnet_id, subnet_data)
 
                 # Find EC2 instances in this subnet
                 for instance_id, instance_data in resource_info['ec2_instances'].items():
                     if instance_data['SubnetId'] == subnet_id:
-                        # Add the new tag to the instance's tags
-                        instance_tags = instance_data.get("Tags", [])
-                        instance_tags.append({"Key": "Origin", "Value": "Ireland"})
-
-                        instance_info = {
-                            "InstanceType": instance_data["InstanceType"],
-                            "PrivateIpAddress": instance_data["PrivateIpAddress"],
-                            "Tags": instance_tags,
-                            "SecurityGroups": instance_data["SecurityGroups"],
-                            "ImageId": instance_data["ImageId"]
-                        }
+                        instance_info = format_ec2_instance_info(
+                            instance_id, instance_data, resource_info['security_groups'])
                         subnet_info["EC2Instances"][instance_id] = instance_info
 
                 vpc_info["Subnets"][subnet_id] = subnet_info
 
+        vpc_number += 1
         formatted_info[vpc_id] = vpc_info
-        index += 1
-    
+
     save_to_audit_file("", "formatted", formatted_info)
 
     return formatted_info
-
-
 
 
 def save_to_audit_file(resource_id, resource_type, data):
@@ -379,15 +454,54 @@ def add_image_id_to_instances(data, image_data_list):
 def get_ec2_instance_ids_from_args():
     """
     Get EC2 instance IDs from command-line arguments and return them as a list.
-    
+
     Returns:
         list: A list of EC2 instance IDs.
     """
     # Check if at least one argument (EC2 instance ID) is provided
     if len(sys.argv) < 2:
-        print("Usage: python your_script.py <EC2_INSTANCE_ID1> [<EC2_INSTANCE_ID2> ...]")
+        print(
+            "Usage: python your_script.py <EC2_INSTANCE_ID1> [<EC2_INSTANCE_ID2> ...]")
         sys.exit(1)
 
     # Extract EC2 instance IDs from command-line arguments (skip the first argument)
     ec2_instance_ids = sys.argv[1:]
     return ec2_instance_ids
+
+
+def wait_for_image_availability(image_id, region):
+    """
+    Check if the AMI with the given ImageId is available in the specified region
+    and wait for it to become available if it's not already.
+
+    :param image_id: str
+        The ID of the AMI.
+    :param region: str
+        The AWS region to check in.
+    """
+    try:
+        ec2_client = boto3.client('ec2', region_name=region)
+        max_tries = 40
+        sleep_time = 30
+        print("Copying AMIs to the desired region")
+        for attempt in range(max_tries):
+            response = ec2_client.describe_images(ImageIds=[image_id])
+            if response['Images']:
+                image_state = response['Images'][0]['State']
+                print(
+                    f"Attempt {attempt + 1}: Image {image_id} is in '{image_state}' state.")
+
+                if image_state == 'available':
+                    print(f"Image {image_id} is now available.")
+                    return
+                else:
+                    time.sleep(sleep_time)
+            else:
+                print(f"No image found with ID: {image_id}")
+                return
+
+        print(
+            f"Image {image_id} did not become available after {max_tries} attempts.")
+
+    except ClientError as e:
+        print(f"An error occurred: {e}")

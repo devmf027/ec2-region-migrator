@@ -34,7 +34,7 @@ vpc_variables_template = """
 variable "vpc_name" {
   description = "VPC Name"
   type        = string
-  default     = "vpc-%(index)d"
+  default     = "vpc-%(index)s"
 }
 
 # VPC CIDR Block
@@ -61,7 +61,7 @@ variable "vpc_tags" {
 
 vpc_auto_tfvars_template = """
 # VPC Variables
-vpc_name                               = "vpc-%(index)d"
+vpc_name                               = "vpc-%(index)s"
 vpc_cidr_block                         = "%(CidrBlock)s"
 vpc_public_subnets                     = %(PublicCidrBlock)s
 vpc_tags                               = %(Tags)s
@@ -102,40 +102,45 @@ provider "aws" {
 """
 
 security_group_resource_template = """
-resource "aws_security_group" "security_group_%(index)d" {
-  name        = %(GroupName)s
+resource "aws_security_group" "security_group_%(index)s" {
   description = %(Description)s
-  vpc_id      = %(VpcId)s
+  vpc_id      = module.vpc.vpc_id
 
-  ingress {
-    description      = %(Description)s
-    from_port        = %(IngressFromPort)s
-    to_port          = %(IngressToPort)s
-    protocol         = %(IngressProtocol)s
-    cidr_blocks      = %(IngressCidrIp)s
-    ipv6_cidr_blocks = %(IngressCidrIpv6)s
-  }
+  %(IngressRules)s
+  %(EgressRules)s
 
-  egress {
-    from_port        = %(EgressFromPort)s
-    to_port          = %(EgressToPort)s
-    protocol         = %(EgressProtocol)s
-    cidr_blocks      = %(EgressCidrIp)s
-    ipv6_cidr_blocks = %(EgressCidrIpv6)s
-  }
-
-  tags = {
-    Name = %(Tags)s
-  }
+  tags = %(Tags)s
 }
 """
 
+ingress_rule_template = """
+  ingress {
+    description      = %(Description)s
+    from_port        = %(FromPort)s
+    to_port          = %(ToPort)s
+    protocol         = %(Protocol)s
+    cidr_blocks      = %(CidrBlocks)s
+    ipv6_cidr_blocks = %(Ipv6CidrBlocks)s
+  }
+"""
+
+egress_rule_template = """
+  egress {
+    description      = %(Description)s
+    from_port        = %(FromPort)s
+    to_port          = %(ToPort)s
+    protocol         = %(Protocol)s
+    cidr_blocks      = %(CidrBlocks)s
+    ipv6_cidr_blocks = %(Ipv6CidrBlocks)s
+  }
+"""
+
 ec2_instance_module_template = """
-module "ec2_instance_%(index)d" {
+module "ec2_instance_%(index)s" {
   source  = "terraform-aws-modules/ec2-instance/aws"
   version = "5.5.0"
 
-  name          = "instance-%(index)d"
+  name          = "instance-%(index)s"
   ami           = "%(ImageId)s"
   instance_type = "%(InstanceType)s"
 
@@ -147,11 +152,22 @@ module "ec2_instance_%(index)d" {
 """
 
 eip_resource_template = """
-# Create Elastic IP for Instance-%(index)d
-resource "aws_eip" "instance_eip-%(index)d" {
-  instance   = module.ec2_instance_%(index)d.id
+# Create Elastic IP for Instance-%(index)s
+resource "aws_eip" "instance_eip-%(index)s" {
+  instance   = module.ec2_instance_%(index)s.id
   domain     = "vpc"
-  depends_on = [module.ec2_instance_%(index)d, module.vpc]
+  depends_on = [module.ec2_instance_%(index)s, module.vpc]
 }
 """
 
+terraform_backend_template = """
+terraform {
+  backend "s3" {
+    bucket         = "%(bucket)s"
+    key            = "%(vpcName)s/%(key)s"
+    region         = "%(region)s"
+    encrypt        = true
+    dynamodb_table = "%(dynamodb_table)s"
+  }
+}
+"""

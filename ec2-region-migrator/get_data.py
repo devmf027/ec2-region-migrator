@@ -15,15 +15,17 @@ def main():
     # Creates an Ami for each instance in the list
     for instance_id in ec2_instance_ids:
         response = ami_list.append(data.create_instance_image(instance_id, instance_id))
-        
-    sleep(90)
+    
+    # Wait for the availability of the new created AMIs
+    sleep(120)
+
     # Copies each Ami to destination region
     for ami in ami_list:
         response = data.copy_instance_image(ami["ImageId"], ami["InstanceId"], AWS_DEFAULT_REGION, DESTINATION_REGION)
         ami["ImageId"] = response["ImageId"]
    
-    # Now, call the get_ec2_resource_info function to get additional resource info
-    resource_info = data.get_ec2_resource_info(ec2_instance_ids)
+    # Now, call the extract_ec2_resource_info function to get additional resource info
+    resource_info = data.extract_ec2_resource_info(ID_LIST)
 
     # Adds imageid to the corresponding ec2 instance
     data.add_image_id_to_instances(resource_info, ami_list)
@@ -31,11 +33,9 @@ def main():
     # Formats the resources information in a hierarchical format
     data.format_ec2_resource_info(resource_info)
 
-    # Save all of the infrastructure info to file
-    data.save_to_audit_file("", "resources", resource_info)
-
-    # data.copy_instance_image("ami-01dc71c2e4542deed", "i-0b6ad7b625a49bf25", AWS_DEFAULT_REGION, DESTINATION_REGION)
-
+    # Waits for the copied AMIs to be available
+    for ami in ami_list:
+        data.wait_for_image_availability(ami["ImageId"], DESTINATION_REGION)
 
     
 

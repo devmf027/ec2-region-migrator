@@ -18,18 +18,17 @@ if ! command_exists pip3; then
 fi
 
 # Install Python dependencies from requirements.txt
-if [ -f "requirements.txt" ]; then
+if [ -f "../requirements.txt" ]; then
     echo "Installing Python dependencies from requirements.txt..."
-    pip3 install -r requirements.txt
+    pip3 install -r ../requirements.txt
 else
     echo "requirements.txt not found. Skipping Python dependencies installation."
 fi
 
 # Check if the execute_migration.sh script exists
-if [ -f "scripts/execute_migration.sh" ]; then
+if [ -f "execute_migration.sh" ]; then
     echo "Running execute_migration.sh..."
-    # Navigate to the directory containing the execute_migration.sh script
-    cd scripts
+
     # Run the execute_migration.sh script
     ./execute_migration.sh
     # Navigate back to the root directory

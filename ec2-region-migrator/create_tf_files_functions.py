@@ -4,7 +4,6 @@ from ipaddress import ip_network
 import terraform_templates.resource_templates as var
 
 
-
 def create_vpc_module(vpc_module_template, index):
     """
     Create a Terraform module for VPC configuration.
@@ -17,7 +16,8 @@ def create_vpc_module(vpc_module_template, index):
 
     :return: None
     """
-    output_directory = os.path.join(os.path.dirname(__file__), '..', "terraform")
+    output_directory = os.path.join(
+        os.path.dirname(__file__), '..', "terraform")
     vpc_directory = os.path.join(output_directory, f"vpc-{index}")
     os.makedirs(vpc_directory, exist_ok=True)
     output_file_path = os.path.join(vpc_directory, "vpc-module.tf")
@@ -42,7 +42,8 @@ def create_tf_file(vpc_name, filename, vpc_variables_template, args={}):
 
     :return: None
     """
-    output_directory = os.path.join(os.path.dirname(__file__), '..', "terraform")
+    output_directory = os.path.join(
+        os.path.dirname(__file__), '..', "terraform")
     vpc_directory = os.path.join(output_directory, vpc_name)
     formatted_template = vpc_variables_template % args
     output_file_path = os.path.join(vpc_directory, filename)
@@ -114,7 +115,8 @@ def format_tags(tag_list):
 
 
 def extract_vpc_info(vpc_info):
-    public_cidr_blocks = [subnet_info['CidrBlock'] for subnet_info in vpc_info['Subnets'].values()]
+    public_cidr_blocks = [subnet_info['CidrBlock']
+                          for subnet_info in vpc_info['Subnets'].values()]
 
     vpc_var_args = {
         "index": vpc_info['VpcIndex'],
@@ -137,40 +139,48 @@ def extract_ec2_instance_info(instance_info, subnet_info, instance_index):
     }
     return ec2_args
 
-def group_security_groups_by_vpc(security_groups):
-    """Group security groups by VPC ID."""
-    grouped = {}
-    for sg_id, sg_info in security_groups.items():
-        vpc_id = sg_info['VpcId']
-        grouped.setdefault(vpc_id, []).append((sg_id, sg_info))
-    return grouped
+
+def format_sg_rules(rules, template):
+    """Format a list of security group rules for Terraform configuration."""
+    formatted_rules = []
+    for rule in rules:
+        # Check and set default for FromPort and ToPort, replace empty strings with 0
+        from_port = rule.get("FromPort")
+        from_port = 0 if from_port == '' else from_port if from_port is not None else 0
+
+        to_port = rule.get("ToPort")
+        to_port = 0 if to_port == '' else to_port if to_port is not None else 0
+
+        formatted_rule = template % {
+            "Description": f'"{rule.get("Description", "")}"',
+            "FromPort": from_port,
+            "ToPort": to_port,
+            "Protocol": f'"{rule.get("IpProtocol", "")}"',
+            "CidrBlocks": json.dumps([ip_range.get("CidrIp", "") for ip_range in rule.get("IpRanges", [])]),
+            "Ipv6CidrBlocks": json.dumps([ip_range.get("Ipv6CidrBlock", "") for ip_range in rule.get("Ipv6Ranges", [])])
+        }
+        formatted_rules.append(formatted_rule)
+    return ''.join(formatted_rules)
 
 
-def extract_security_group_info(grouped_security_groups):
-    sg_resources = {}
+def extract_security_group_info(sg_info, index):
+    """Extract and format security group information for Terraform."""
+    ingress_rules = format_sg_rules(sg_info.get(
+        "IpPermissions", []), var.ingress_rule_template)
+    egress_rules = format_sg_rules(sg_info.get(
+        "IpPermissionsEgress", []), var.egress_rule_template)
 
-    for vpc_id, sg_list in grouped_security_groups.items():
-        resources = []
-        for sg_id, sg_info in sg_list:
-            ingress = format_sg_rules(sg_info.get('IpPermissions', []))
-            egress = format_sg_rules(sg_info.get('IpPermissionsEgress', []))
-            tags = format_tags(sg_info.get('Tags', []))
-            group_name = sg_info.get('GroupName', sg_id)  # Assuming GroupName is not available
+    sg_args = {
+        "index": index,
+        "GroupName": f'"{sg_info.get("Id", "")}"',
+        "Description": '"Security Group created from migration script"',
+        "VpcId": f'"{sg_info.get("VpcId", "")}"',
+        "IngressRules": ingress_rules,
+        "EgressRules": egress_rules,
+        "Tags": format_tags(sg_info.get("Tags", []))
+    }
+    return sg_args
 
-            sg_resource = security_group_resource_template % {
-                "GroupName": f'"{group_name}"',
-                "Description": f'"{sg_info.get("Description", "Security Group")}"',
-                "VpcId": f'"{vpc_id}"',
-                "IngressRules": ingress,
-                "EgressRules": egress,
-                "Tags": tags
-            }
-            resources.append(sg_resource)
-
-        sg_resources[vpc_id] = "\n".join(resources)
-
-    return sg_resources
-    
 
 def get_destination_region():
     region = os.getenv("DESTINATION_REGION")
@@ -178,3 +188,47 @@ def get_destination_region():
         "Region": region
     }
     return region_arg
+
+def get_backend_config():
+    """
+    Retrieves backend configuration details from environment variables.
+
+    :return: list
+        List containing the S3 bucket name, key, and DynamoDB table name.
+    """
+    bucket_name = os.getenv("BUCKET_NAME")
+    key = os.getenv("KEY")
+    dynamodb_table = os.getenv("DYNAMODB_TABLE")
+
+    return [bucket_name, key, dynamodb_table]
+
+def format_terraform_backend_args(vpc_name, bucket, key, region, dynamodb_table):
+    """
+    
+    Format the arguments for the Terraform backend configuration.
+
+    :param vpc_name: str
+        The name of the VPC.
+
+    :param bucket: str
+        The name of the S3 bucket for the Terraform backend.
+
+    :param key: str
+        The key (path) in the S3 bucket where the Terraform state file will be stored.
+
+    :param region: str
+        The AWS region for the S3 bucket.
+
+    :param dynamodb_table: str
+        The name of the DynamoDB table for state locking.
+
+    :return: dict
+        Formatted arguments for the Terraform backend configuration.
+    """
+    return {
+        "bucket": bucket,
+        "vpcName": vpc_name,
+        "key": key,
+        "region": region,
+        "dynamodb_table": dynamodb_table
+    }

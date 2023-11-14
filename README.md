@@ -45,7 +45,7 @@ This project is designed to automate the migration of AWS EC2 instances from one
    - To run the script, open a terminal in the project directory and execute:
 
      ```bash
-     ./init.sh
+     ./scripts/init.sh
      ```
 
    - This script may ask for your sudo password to install the required packages.
@@ -74,8 +74,46 @@ This project is designed to automate the migration of AWS EC2 instances from one
    - Modify the Terraform files under `demo-infrastructure` if you need to customize the migration process.
    - You can also manually set or export AWS credentials in your shell if required.
 
+## Using the Demo-Infrastructure Directory
+
+The `demo-infrastructure` directory in this project contains Terraform manifests that are intended for setting up demo aws basic ec2 resources for trial purposes. Here's how you can use this directory:
+
+1. **Directory Structure**:
+   - The `demo-infrastructure` directory is organized into subdirectories for each virtual private cloud (VPC) that you are working with (e.g., `vpc1`, `vpc2`).
+   - Each VPC subdirectory contains its own set of Terraform manifests (`*.tf` files) which define the infrastructure resources to be created in that VPC.
+
+2. **Terraform Manifests**:
+   - Inside each VPC subdirectory, you'll find Terraform files like `ec2instances.tf`, `securitygroups.tf`, and `vpc-module.tf`. These files contain the Terraform code to define your AWS infrastructure components.
+   - `terraform.tfvars` and `vpc.auto.tfvars` are used for setting variables specific to your environment and requirements.
+
+3. **Initializing Terraform**:
+   - Before you can apply the Terraform configurations, navigate to the relevant VPC subdirectory and initialize Terraform using the following command:
+
+     ```bash
+     terraform init
+     ```
+
+   - This command will initialize your Terraform workspace, which includes downloading any necessary Terraform providers and modules.
+
+4. **Applying Terraform Configuration**:
+   - To create the infrastructure in a AWS region (specified in terraform.tfvars), run:
+
+     ```bash
+     terraform apply
+     ```
+
+   - This command will show a plan of what Terraform intends to do and ask for your confirmation before proceeding.
+   - Review the plan carefully to ensure it aligns with your intended changes.
+
+### Important Notes
+
+- Familiarize yourself with Terraform's workflow and syntax if you are new to Terraform. Mistakes in Terraform files can lead to unintended changes in your AWS infrastructure.
+- Always back up your current Terraform state and configuration files before making any significant changes.
+- The `demo-infrastructure` directory is a crucial part of the migration process; handle it with the understanding that it directly affects your cloud infrastructure.
+
 ### Note
 
+- If the aws credentials are already set, uncomment '# profile = "default"' in versions.tf otherwise set them as environment variables
 - Ensure that the AWS credentials provided have the necessary permissions to perform actions on EC2 instances, VPCs, and other related services.
 - The project is structured to be user-friendly, but a basic understanding of AWS services and Terraform is beneficial for custom configurations and troubleshooting.
 
