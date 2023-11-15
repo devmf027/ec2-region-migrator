@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Change pwd to the directory where the script resides
+cd $(cd $(dirname "$0") && pwd)  
+
+# Clean previous audit and terraform files
+./clean.sh
+
 # Prompt the user for AWS key ID
 read -p "Enter AWS Access Key ID: " AWS_KEY_ID
 
@@ -64,7 +70,7 @@ python3 -E ../ec2-region-migrator/create_tf_files.py $INSTANCE_IDS
 # Navigate to the terraform directory
 cd ../terraform
 
-# Iterate over each VPC directory and execute Terraform commands
+Iterate over each VPC directory and execute Terraform commands
 for vpc_dir in vpc-*; do
     if [ -d "$vpc_dir" ]; then
         echo "Processing $vpc_dir..."

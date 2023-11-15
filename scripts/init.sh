@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Change pwd to the directory where the script resides
+cd $(cd $(dirname "$0") && pwd)  
+
 # Function to check if a command exists
 command_exists() {
     type "$1" &> /dev/null 
