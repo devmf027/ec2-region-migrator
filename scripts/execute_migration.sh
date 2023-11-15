@@ -20,13 +20,13 @@ read -p "Enter AWS Default Region: " AWS_DEFAULT_REGION
 read -p "Enter Destination Region: " DESTINATION_REGION
 
 # Prompt the user for Terraform backend S3 bucket name
-read -p "Enter Terraform Backend S3 Bucket Name: " BUCKET_NAME
+read -p "Enter Terraform Backend S3 Bucket Name or leave blank to create local backend: " BUCKET_NAME
 
 # Prompt the user for Terraform backend key
-read -p "Enter Terraform Backend Key: " KEY
+read -p "Enter Terraform Backend Key or leave blank to create local backend: " KEY
 
 # Prompt the user for DynamoDB table name for Terraform state locking
-read -p "Enter DynamoDB Table Name for Terraform State Locking: " DYNAMODB_TABLE
+read -p "Enter DynamoDB Table Name for Terraform State Locking or leave blank to create local backend: " DYNAMODB_TABLE
 
 # Set the environment variables for AWS configuration
 export AWS_ACCESS_KEY_ID="$AWS_KEY_ID"
@@ -68,35 +68,35 @@ echo "Running Python script to create Terraform files..."
 python3 -E ../ec2-region-migrator/create_tf_files.py $INSTANCE_IDS
 
 # Navigate to the terraform directory
-cd ../terraform
+# cd ../terraform
 
-Iterate over each VPC directory and execute Terraform commands
-for vpc_dir in vpc-*; do
-    if [ -d "$vpc_dir" ]; then
-        echo "Processing $vpc_dir..."
+# Iterate over each VPC directory and execute Terraform commands
+# for vpc_dir in vpc-*; do
+#     if [ -d "$vpc_dir" ]; then
+#         echo "Processing $vpc_dir..."
 
-        # Navigate into the VPC directory
-        cd "$vpc_dir"
+#         # Navigate into the VPC directory
+#         cd "$vpc_dir"
 
-        # Run Terraform commands
-        echo "Running 'terraform init' in $vpc_dir..."
-        terraform init
+#         # Run Terraform commands
+#         echo "Running 'terraform init' in $vpc_dir..."
+#         terraform init
 
-        echo "Running 'terraform fmt' in $vpc_dir..."
-        terraform fmt
+#         echo "Running 'terraform fmt' in $vpc_dir..."
+#         terraform fmt
 
-        echo "Running 'terraform validate' in $vpc_dir..."
-        terraform validate
+#         echo "Running 'terraform validate' in $vpc_dir..."
+#         terraform validate
 
-        echo "Running 'terraform apply --auto-approve' in $vpc_dir..."
-        terraform apply --auto-approve
+#         echo "Running 'terraform apply --auto-approve' in $vpc_dir..."
+#         terraform apply --auto-approve
 
-        # Navigate back to the terraform directory
-        cd ..
+#         # Navigate back to the terraform directory
+#         cd ..
 
-        echo "$vpc_dir processed."
-    fi
-done
+#         echo "$vpc_dir processed."
+#     fi
+# done
 
 # Navigate back to the scripts directory
 cd ../scripts
