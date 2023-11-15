@@ -25,7 +25,7 @@ def main():
         ami["ImageId"] = response["ImageId"]
    
     # Now, call the extract_ec2_resource_info function to get additional resource info
-    resource_info = data.extract_ec2_resource_info(ID_LIST)
+    resource_info = data.extract_ec2_resource_info(ec2_instance_ids)
 
     # Adds imageid to the corresponding ec2 instance
     data.add_image_id_to_instances(resource_info, ami_list)
