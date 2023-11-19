@@ -128,13 +128,13 @@ def extract_vpc_info(vpc_info):
     return vpc_var_args
 
 
-def extract_ec2_instance_info(instance_info, subnet_info, instance_index):
+def extract_ec2_instance_info(instance_info, subnet_info, instance_index, sg_ids):
     ec2_args = {
         "index": instance_index,
         "ImageId": instance_info['ImageId'],
         "InstanceType": instance_info['InstanceType'],
         "CidrBlock": f'"{subnet_info["CidrBlock"]}"',
-        "SecurityGroupIds": "[]",  # Placeholder for security groups
+        "SecurityGroupIds": sg_ids,  
         "Tags": format_tags(instance_info.get('Tags', []))
     }
     return ec2_args

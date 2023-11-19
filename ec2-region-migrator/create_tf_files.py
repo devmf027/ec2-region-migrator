@@ -52,27 +52,39 @@ def main():
         tf.create_tf_file(vpc_name, "versions.tf", var.versions_template)
 
         ec2_instance_index = 1
-        ec2_instances_tf_content = ""
         unique_security_groups = {}
 
+        # First, collect unique security groups and associated instances
         for subnet_id, subnet_data in vpc_data['Subnets'].items():
             for instance_id, instance_data in subnet_data['EC2Instances'].items():
-                ec2_args = tf.extract_ec2_instance_info(instance_data, subnet_data, ec2_instance_index)
-                
-                # Call the function to create ec2-instances.tf file
-                tf.create_tf_file(vpc_name, "ec2-instances.tf", var.ec2_instance_module_template, ec2_args)
-                # Call the function to create eip-resources.tf file
-                tf.create_tf_file(vpc_name, "eip-resources.tf", var.eip_resource_template, {"index": ec2_instance_index})
+                for sg_detail in instance_data['SecurityGroupsDetails']:
+                    sg_id = sg_detail['Id']
+                    if sg_id not in unique_security_groups:
+                        unique_security_groups[sg_id] = {"details": sg_detail, "instances": []}
+                    unique_security_groups[sg_id]["instances"].append(ec2_instance_index)
                 ec2_instance_index += 1
 
-                 # Collect unique security groups
-                for sg_detail in instance_data['SecurityGroupsDetails']:
-                    unique_security_groups[sg_detail['Id']] = sg_detail
-
-        # Generate and append security group configurations
-        for sg_index, sg_detail in enumerate(unique_security_groups.values(), start=1):
-            sg_args = tf.extract_security_group_info(sg_detail, sg_index)
+        # Then, generate security group configurations and assign indexes
+        sg_index = 1
+        for sg_id, sg_info in unique_security_groups.items():
+            sg_args = tf.extract_security_group_info(sg_info["details"], sg_index)
             tf.create_tf_file(vpc_name, "security-groups.tf", var.security_group_resource_template, sg_args)
+            # Assign the index to the security group
+            unique_security_groups[sg_id]['index'] = sg_index
+            sg_index += 1
+
+        # Reset instance index for EC2 instance creation
+        ec2_instance_index = 1
+
+        # Finally, create EC2 instances configurations
+        for subnet_id, subnet_data in vpc_data['Subnets'].items():
+            for instance_id, instance_data in subnet_data['EC2Instances'].items():
+                # Construct the security group IDs using the assigned indexes
+                sg_ids = [f"aws_security_group.security_group_{unique_security_groups[sg['Id']]['index']}.id" for sg in instance_data['SecurityGroupsDetails']]
+                ec2_args = tf.extract_ec2_instance_info(instance_data, subnet_data, ec2_instance_index, sg_ids)
+                tf.create_tf_file(vpc_name, "ec2-instances.tf", var.ec2_instance_module_template, ec2_args)
+                tf.create_tf_file(vpc_name, "eip-resources.tf", var.eip_resource_template, {"index": ec2_instance_index})
+                ec2_instance_index += 1
 
                   
 
